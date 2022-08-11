@@ -1,0 +1,47 @@
+---
+# vars file for OCP4-monitoring
+monitoring:
+  template_dir: /root/ocp4-role-monitoring/templates
+  storage_class_name: basic-csi
+
+# GB unit is used by default
+
+  promotheuse_pv_size: 50
+  alertmanager_pv_size: 60 
+
+#Alertmanager conf 
+  smtp:
+    smart_host: smtpauth.dom101.prdres:25
+    auth_username: SVCEXHR0043
+    auth_password: !vault |
+            $ANSIBLE_VAULT;1.1;AES256
+            64336261313438356233636531313362633965346665376336623431393239356663633839616265
+            3130643835393830363432336230363139386266636562370a626661363365353865336533616633
+            33656266643933333639383531356466363430396333636533646364626364323934363264336537
+            3637323132376364650a633231356438643732643536303338373031616530613837623065373436
+            66633737333735326130663965363666633961306532343166353733306430666437
+
+
+
+  receiver1: 
+    name: Default
+    group_wait: 10
+    namespace_to_match: openshif-monitoring
+    email:
+      to: playbook13@live.fr
+      from: alert@alerting.fr 
+
+  receiver2:
+    name: ansible_play
+    group_wait: 15
+    alert_name: "ETCD"
+    email:
+      to: tester@email.fr 
+      from: alert@alerting.fr
+
+
+
+
+
+
+

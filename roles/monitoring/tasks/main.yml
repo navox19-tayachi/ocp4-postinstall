@@ -1,0 +1,32 @@
+---
+
+
+
+- name: CREATE SECRET
+  k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: Opaque
+      metadata:
+        name: alertmanager-main
+        namespace: openshift-monitoring
+      data:
+        alertmanager.yaml: "{{ lookup('template',  'alertmanager-temp.j2' )  | b64encode }}"
+
+  
+
+- debug:
+    msg:
+      - "DONE !!!"
+      - "Sucess : Alertmanager is Configured with success "  
+
+
+
+- name: Create Configmap for PV 
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'config.j2') }}"
+
+

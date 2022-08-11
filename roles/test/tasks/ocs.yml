@@ -1,0 +1,77 @@
+---
+
+    - name: OCS | Gather information about ocs storage classes
+      k8s_info:
+        kind: StorageClass
+        name: '{{ item }}'
+      loop: 
+        - "{{ test.ocs.block_storage_class }}"
+        - "{{ test.ocs.object_storage_class }}"
+      register: rs
+
+
+    - name: OCS | Assert that  storage classes creation succeeded
+      assert:
+        that:
+          - rs is successful
+          - rs is defined
+
+
+    - name: OCS | Add a PersistentVolumeClaims for File and block storage
+      k8s:
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: "test-{{ item }}"
+            namespace: "{{ test.namespace }}"
+            labels:
+              app: test
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
+            storageClassName: "{{ item }}"
+
+      loop: "{{ test.ocs.block_storage_class }}"
+
+
+
+
+    - name: OCS | Check that PVC status is bound 
+      k8s_info:
+        name: "test-{{ item }}"
+        kind: PersistentVolumeClaim
+        namespace: "{{ test.namespace }}"
+      register: pvc
+      until: pvc.resources[0].status.phase == "Bound"
+      retries: 10
+      delay: 1
+      loop: "{{ test.ocs.block_storage_class }}"
+
+  
+
+    - name: OCS | Add a ObjectBucketClaim 
+      k8s:
+        definition:
+          apiVersion: objectbucket.io/v1alpha1
+          kind: ObjectBucketClaim
+          metadata:
+            name: "test-{{ item }}"
+            namespace: "{{ test.namespace }}"
+          spec:
+            generateBucketName: "test-{{ item }}"
+            storageClassName: "{{ item }}"
+      register: result
+      loop: "{{ test.ocs.object_storage_class }}"
+
+
+    - name:  OCS | Check ObjectBucketClaim Creation 
+      assert:
+        that:
+         - result is successful
+         - result is defined
+
+

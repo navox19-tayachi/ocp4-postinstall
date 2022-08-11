@@ -1,0 +1,75 @@
+---
+- name: Test APP  | Add a configmap
+  k8s:
+    name: "{{ test.app.configmap_name }}"
+    namespace: "{{ test.namespace }}"
+    definition:
+       kind: ConfigMap
+       apiVersion: v1
+       data:
+         MYSQL_USER: "petclinic"
+         MYSQL_PASSWORD: "petclinic"
+         MYSQL_ROOT_PASSWORD: "root"
+         MYSQL_DATABASE: "petclinic"
+    apply: yes
+  register: k8s_configmap
+
+- name: Test APP  |  Deploy petclinic application
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: "{{ test.app.pod_name }}" 
+        namespace: "{{ test.namespace }}"
+        labels:
+          app: test
+      spec:
+        containers:
+          - name: petclinic
+            image: "{{ test.app.image }}:{{ test.app.build_number }}"
+            envFrom:
+            - configMapRef:
+                name: "{{ test.app.configmap_name }}"
+
+
+- name: Test APP  | Add a ClusterIP service  
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ test.app.service_name }}" 
+        namespace: "{{ test.namespace }}"
+      spec:
+        selector:
+          app: test
+        ports:
+          - port: 8080
+            targetPort: 8080
+            protocol: TCP
+
+
+- name: Test APP  | Add a route for  ClusterIP service
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Route
+      metadata:
+        name: "{{ test.app.pod_name }}" 
+        namespace: "{{ test.namespace }}"
+      spec:
+        host: "petclinic.apps.{{ config.cluster_name }}.{{ config.base_domain }}"
+        to:
+          kind: Service
+          name: "{{ test.app.service_name }}"
+          weight: 100
+        port:
+          targetPort: 8080
+        wildcardPolicy: None
+
+
+
+
+
+

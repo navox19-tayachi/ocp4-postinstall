@@ -1,0 +1,11 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: "elasticsearch-operator"
+  namespace: "openshift-operators-redhat" 
+spec:
+  channel: "{{ logging.version }}" 
+  installPlanApproval: "Automatic"
+  source: "{{ logging.source }}" 
+  sourceNamespace: "openshift-marketplace"
+  name: "elasticsearch-operator"

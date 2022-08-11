@@ -1,0 +1,93 @@
+﻿---
+- hosts: localhost
+  gather_facts: True
+  environment:
+    PATH: "{{ playbook_dir }}/bin:{{ ansible_env.PATH }}"
+    GOVC_USERNAME: "{{ vcenter.username }}"
+    GOVC_PASSWORD: "{{ vcenter.password }}"
+    GOVC_URL: "https://{{ vcenter.server }}"
+    GOVC_INSECURE: 1
+
+  module_defaults:
+    group/k8s:
+      host: "{{ openshift.api }}"
+      validate_certs: no
+      api_key: "{{ openshift_auth.k8s_auth.api_key }}"
+    group/k8s_auth:
+      validate_certs: no
+      host: "{{ openshift.api }}"
+    group/k8s_info:
+      validate_certs: no
+      host: "{{ openshift.api }}"
+      api_key: "{{ openshift_auth.k8s_auth.api_key }}"
+    group/k8s_scale:
+      validate_certs: no
+      host: "{{ openshift.api }}"
+      api_key: "{{ openshift_auth.k8s_auth.api_key }}"
+    group/k8s_service:
+      validate_certs: no
+      host: "{{ openshift.api }}"
+      api_key: "{{ openshift_auth.k8s_auth.api_key }}"
+    uri:
+      timeout: 300
+      url_username: "{{ download.username | default('anonymous') }}"
+      url_password: "{{ download.password | default('anonymous') }}"
+      validate_certs: no
+      force_basic_auth: yes
+    get_url:
+      timeout: 300
+      url_username: "{{ download.username | default('anonymous') }}"
+      url_password: "{{ download.password | default('anonymous') }}"
+      validate_certs: no
+      force_basic_auth: yes
+
+  tasks:
+  - block:
+    - name: Creates Download directory
+      file:
+       path: ./downloads
+       state: directory
+      when: install.dependencies == "true" or install.all == "true"
+
+    - name: Creates Download directory
+      file:
+       path: ./bin
+       state: directory
+      when: install.dependencies == "true" or install.all == "true"
+
+    - name: Creates certificates directory
+      file:
+       path: ./certs
+       state: directory
+      when: install.dependencies == "true" or install.all == "true"
+
+
+    - name: Log in to OpenShift API
+      k8s_auth:
+        username: "{{ openshift.username }}"
+        password: "{{ cyberark_openshift_password | default(openshift.password) }}"
+      register: openshift_auth
+
+
+
+    - name: Run the role to configure Monitoring / Alerting
+      include_role:
+        name: monitoring
+      when: install.monitoring == "true" or install.all == "true"
+        
+    - name: Run the role to configure logging / logforwarder api to external kafka 
+      include_role:
+        name: logging
+      when: install.logging == "true" or install.all == "true"	
+
+    - name: Run the role to configure authentication (sso, htpasswd, ldap,…) 
+      include_role:
+        name: authentication
+      when: install.authentication == "true" or install.all == "true"
+
+
+
+    - name: Log out of OpenShift
+      when: openshift_auth.k8s_auth.api_key is defined
+      k8s_auth:
+        state: absent

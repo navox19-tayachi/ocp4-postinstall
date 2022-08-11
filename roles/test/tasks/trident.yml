@@ -1,0 +1,81 @@
+---
+
+- name:  Trident | Ensure trident namespace exists
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+         name: "{{ test.trident.namespace }}"
+
+- name:  Trident | check that  trident pod is in a running state 
+  k8s_info:
+    kind: Pod
+    label_selectors:
+      - "{{ test.trident.label_selectors }}"
+  register: trident_pod_status
+  until: trident_pod_status.resources[0].status.phase == "Running"
+  retries: 10
+
+- name: Trident | Get Trident Daemonset
+  k8s_info:
+    kind: DaemonSet
+    namespace: "{{ test.trident.namespace }}"
+    label_selectors:
+      - "{{ test.trident.label_selectors }}"
+  register: ds
+
+- name: Trident | Check that daemonset replicas number are as scheduled 
+  assert:
+    that:
+      - ds.resources[0].status.currentNumberScheduled == ds.resources[0].status.desiredNumberScheduled
+
+- name: Create PVC
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'pvc-trident.j2') }}"
+
+- name: Check that PVC is bound 
+  k8s_info:
+    name: "{{ test.trident.pvc_name }}"
+    kind: PersistentVolumeClaim
+    namespace: "{{ test.namespace }}"
+  register: pod_status
+  until: pod_status.resources[0].status.phase == "Bound"
+  retries: 10
+  delay: 5
+
+- name: Add a storage test pod with volume 
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: storage-test
+        namespace: "{{ test.namespace }}"
+      spec:
+        containers:
+          - name: storage-test
+            image: "{{ test.trident.image }}:{{ test.trident.imageversion }}"
+            volumeMounts:
+            - mountPath: /var/myvolume
+              name: myvolume
+        volumes:
+        - name: myvolume
+          persistentVolumeClaim:
+            claimName: "{{ test.trident.pvc_name }}"
+
+- name: Wait and gather information about new pod
+  k8s_info:
+    name: storage-test
+    kind: Pod
+    namespace: "{{ test.namespace }}"
+  register: pod_status
+  until: pod_status.resources[0].status.phase == "Running"
+  retries: 10
+  delay: 1
+
+
+
+
+

@@ -1,0 +1,87 @@
+---
+
+
+
+  
+entity: ""
+
+install:
+  all: "false"   # if true , dependencies and all roles will be executed.
+  dependencies: "true"
+  infra_node: "false"
+  operators: "false"
+  trident: "false"
+  ocs: "false"
+  monitoring: "false"
+  logging: "false"
+  authentication: "false"
+  rbac: "false"
+  splunk: "false"
+  backup_etcd: "false"
+  ldapsync: "false"
+  priority_classes: "false"
+  certificates: "false"
+  valero: "false"
+  nsx_systag: "false"
+
+
+
+openshift:
+  config_namespace: openshift-config
+  api: "https://api.{{ config.cluster_name }}.{{ config.base_domain }}:6443"
+  username: ""
+  password: ""
+
+
+monitoring:
+  storage_class_name: 
+  promotheuse_pv_size: 50 # GB unit is used by default
+  alertmanager_pv_size: 60 
+  smtp:
+    smart_host: 
+    auth_username: 
+    auth_password: 
+  receiver1: 
+    name: Default
+    group_wait: 10
+    email:
+      to: @r
+      from: alert-ocp-hp-monitoring@alerting.fr 
+  receiver2:
+    name: ansible_play
+    group_wait: 15
+    alert_name: "ETCD"
+    email:
+      to: DID_COT@
+      from: alert-ocp-hp-monitoring@alerting.fr
+
+logging:
+  source: "redhat-operator-proxy"
+  version: "{{ config.ocp_major_version }}"
+  chunkLimitSize: "900000"
+  cpu_fluentd: "500m"
+  storageclass: "netapp"
+  size_pv_es_gb: "200"
+  nb_instance_es: "3"
+  nb_instance_kibana: "2"
+  schedule: "30 3 * * *"
+  redundancyPolicy: "SingleRedundancy"
+  elastic:
+    ephemeral: false
+    memory_limit: "16Gi"
+    cpu_request: "1"
+    memory_request: "16Gi"
+  retention:
+    application: "7" # number of days to keep logs 
+    infra: "3"
+    audit: "1"
+#kafka vars  
+  kafka:
+    logforwarder: True
+    name1: app-logs
+    name2: infra-logs
+    name3: audit-logs
+    url1: tcp://KAFKA-INT-1
+    url2: tcp://KAFKA-INT-2
+    url3: tcp://KAFKA-INT-3
+    topic: 

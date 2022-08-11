@@ -1,0 +1,14 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "{{ test.trident.pvc_name }}"
+  namespace: "{{ test.namespace }}"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: "{{ test.trident.storage_class }}"
+  volumeMode: Filesystem
+

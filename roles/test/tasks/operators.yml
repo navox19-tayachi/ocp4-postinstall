@@ -1,0 +1,16 @@
+---
+
+- name: Wait until all operator sources are available
+  k8s_info:
+    api_version: v1alpha1
+    kind: CatalogSource
+    name: "{{ item.name }}"
+    namespace: openshift-marketplace
+  register: result
+  until: result.resources[0].status.connectionState.lastObservedState == "READY"
+  retries: 20
+  delay: 1
+  loop: "{{ operator_sources }}"
+
+
+

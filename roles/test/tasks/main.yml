@@ -1,0 +1,55 @@
+---
+    - name: Create namespace
+      k8s:
+        kind: Namespace
+        api_version: v1
+        name: "{{ test.namespace }}"
+        state: present
+             
+    - name: call operators checks
+      include: operators.yml
+      when:  runtest.testOperators == True
+
+    - name: deploy test application 
+      include: app-test.yml
+      when:  runtest.testApptest == True
+      
+      
+    - name: run htpasswd checks
+      include: htpasswd.yml
+      when:  runtest.testHtpasswd == True      
+
+
+
+    - name: call logging checks
+      include: logging.yml 
+      when:  runtest.testLogging == True
+      
+    - name: call trident checks
+      include: trident.yml 
+      when:  runtest.testTrident == True       
+         
+    - name: call network checks
+      include: network.yml
+      when:  runtest.testNetwork == True    
+      
+    - name: call ocs checks
+      include: ocs.yml
+      when:  runtest.testOcs == True
+
+    - name: Remove namespaces
+      k8s:
+        kind: Namespace
+        name: "{{ item }}"
+        state: absent
+        wait: true
+        wait_timeout: 180
+      ignore_errors: true
+      when:  runtest.CleanAll == True
+      loop:
+        - "{{ test.namespace }}"
+        - "{{ test.namespace2 }}"
+       
+
+
+

@@ -1,0 +1,9 @@
+---
+backup:
+  cron: ""
+  sa_name: ""
+  sa_namespace: ""
+
+artifactory_host: ""
+artifactory:
+  redhat_io: ""

@@ -1,0 +1,39 @@
+apiVersion: logging.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  name: instance
+  namespace: openshift-logging
+spec:
+  outputs:
+    - kafka:
+        brokers:
+          - {{ logging.kafka.url1 }}/{{ logging.kafka.topic }}
+          - {{ logging.kafka.url2 }}/{{ logging.kafka.topic }}
+          - {{ logging.kafka.url3 }}/{{ logging.kafka.topic }}
+        topic: {{ logging.kafka.topic }}
+      name: {{ logging.kafka.name1 }}
+      type: kafka
+    - kafka:
+        brokers:
+          - {{ logging.kafka.url1 }}/{{ logging.kafka.topic }}
+          - {{ logging.kafka.url2 }}/{{ logging.kafka.topic }}
+          - {{ logging.kafka.url3 }}/{{ logging.kafka.topic }}
+        topic: {{ logging.kafka.topic }}
+      name: {{ logging.kafka.name2 }}
+      type: kafka
+  pipelines:
+   - name: app-topic 
+     inputRefs: 
+     - application
+     outputRefs: 
+     - {{ logging.kafka.name1 }}
+     - default
+     labels:
+       logType: application 
+   - name: infra-topic 
+     inputRefs:
+     - infrastructure
+     outputRefs:
+     - default
+     labels:
+       logType: infra

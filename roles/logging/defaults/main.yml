@@ -1,0 +1,34 @@
+---
+# vars file for openshift-logging
+logging:
+  source: ""
+  version: ""
+  chunkLimitSize: ""
+  cpu_fluentd: ""
+  storageclass: ""
+  size_pv_es_gb: ""
+  nb_instance_es: ""
+  nb_instance_kibana: ""
+  
+  elastic:
+    ephemeral: ""
+    memory_limit: ""
+    cpu_request: ""
+    memory_request: ""
+  schedule: ""
+  redundancyPolicy: ""
+  retention:
+    application: "" # number of days to keep logs 
+    infra: ""
+    audit: ""
+  
+#kafka vars 
+  kafka:
+    logforwarder: False # set to True if you want to configure kafka Logforwarder Api
+    name1: ""
+    name2: ""
+    name3: ""
+    url1: ""
+    url2: ""
+    url3: ""
+    topic: ""

@@ -1,0 +1,21 @@
+---
+- name: Create openshift-backup-etcd project
+  k8s:
+    name: "{{ backup.sa_namespace }}"
+    api_version: project.openshift.io/v1
+    kind: Project
+    definition:
+      metadata:
+        annotations:
+          openshift.io/description: "Openshift Backup Automation Tool"
+          openshift.io/node-selector: ""
+
+- name: Create ServiceAccount, ClusterRoleBinding and Cronjob
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'ocp4-backup.yml.j2') }}"
+
+- name: Add privileged rights for openshift-backup user
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'rb-scc.yml.j2') }}"

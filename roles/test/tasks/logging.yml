@@ -1,0 +1,28 @@
+---
+
+- name: Logging | Get  cluster-logging-operator deployment
+  k8s_info:
+    kind: Deployment
+    name: "{{ test.logging.name }}"
+    namespace: "{{ test.logging.namespace }}"
+  register: deploy
+
+- name:  Logging | Check that deployment wait worked
+  assert:
+    that:
+      - deploy.resources[0].status.availableReplicas == deploy.resources[0].status.replicas
+
+
+- name: Logging | Get  LogForwarder details 
+  k8s_info:
+    kind: ClusterLogForwarder
+  #  name: "{{ logging.name }}"
+    namespace: "{{ test.logging.namespace }}"
+  register: logforwarder 
+
+
+- name:  Logging | Check connexion on LogForwarder 
+  assert:
+    that:
+     - logforwarder is successful
+     - logforwarder.resources[0].status.conditions[0].type == "Ready"

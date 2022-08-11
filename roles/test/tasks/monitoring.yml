@@ -1,0 +1,46 @@
+---
+
+- name: Monitoring | Ensure namespace exists
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+         name: "{{ test.monitoring.namespace }}"
+
+
+- name: Monitoring |  Gather information about deployed Alertmanager pods
+  k8s_info:
+     kind: Pod
+     namespace: "{{ test.monitoring.namespace }}"
+     label_selectors:
+       - "{{ test.monitoring.label_selectors }}"
+  register: rs
+
+
+- name: Monitoring | Assert that Alertmanager pod creation succeeded
+  assert:
+    that:
+      - rs is successful
+      - rs.resources[0].status.phase == "Running"
+      - rs.resources[1].status.phase == "Running"
+      - rs.resources[2].status.phase == "Running" 
+
+ 
+- name: Monitoring | Get Alertmanager PVC
+  k8s_info:
+    kind: PersistentVolumeClaim
+    namespace: "{{ test.monitoring.namespace }}"
+    label_selectors:
+       - "{{ test.monitoring.label_selectors }}"
+  register: pvc_list
+
+
+- name: Monitoring |  Assert that pvc are bound 
+  assert:
+    that:
+      - pvc_list is successful
+      - pvc_list.resources[0].status.phase == "Bound"
+      - pvc_list.resources[1].status.phase == "Bound"
+      - pvc_list.resources[2].status.phase == "Bound"
+

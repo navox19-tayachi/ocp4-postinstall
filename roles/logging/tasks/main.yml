@@ -1,0 +1,86 @@
+---
+
+- name: Logging | Create a Namespace for the Elasticsearch Operator
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'eo-namespace.j2') }}"
+
+- name: Logging | Create an Operator Group object for elasticsearch
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'eo-og.j2') }}"
+
+- name: Logging |  Create a Subscription for Elasticsearch operator using catalogue redhat-operators
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'eo-sub.j2') }}"
+
+- name: Logging | Create a Namespace for the Cluster Logging Operator
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'clo-namespace.j2') }}"
+
+- name: Logging | Create an OperatorGroup object
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'clo-og.j2') }}"
+
+- name: Logging |  subscribe a Namespace to the Cluster Logging Operator
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'clo-sub.j2') }}"
+
+- name: wait for operator to install 
+  pause:
+    prompt: Please confirm when the cluster-logging-operator is ready 
+
+- name:  Logging | check cluster-logging-operator deployment
+  k8s_info:
+    kind: Deployment
+    name: cluster-logging-operator
+    namespace: openshift-logging
+  register: deploy
+  until: deploy.resources[0].spec.replicas == 1
+  retries: 50
+
+- name: Logging | Create the Logging instance
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'instance_ephemeral.j2') }}"
+  when:  logging.elastic.ephemeral == true
+
+- name: Logging | Create the Logging instance
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'instance.j2') }}"
+  when:  logging.elastic.ephemeral == false
+
+- name: Pause 
+  pause:
+    seconds: 40
+
+- name: Logging | Check & wait & gather information about elasticsearch pods
+  k8s_info:
+    kind: Pod
+    namespace: openshift-logging
+    label_selectors:
+      - component == elasticsearch
+  register: es
+  until: es.resources[0].status.phase == "Running"
+  retries: 50  
+
+- name: Logging | Check & wait and gather information about fluentd pods
+  k8s_info:
+    kind: Pod
+    namespace: openshift-logging
+    label_selectors:
+      - component == fluentd
+  register: fluentd
+  until: fluentd.resources[0].status.phase == "Running"
+  retries: 50
+
+- name: Logging | Create Logforwarder instance 
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'kafka.j2') }}"
+  when: logging.kafka.logforwarder == True 

@@ -1,0 +1,69 @@
+
+runtest:
+  CleanAll: "" # set to True/False to Clean all created testing objects 
+  testTrident: ""      # set to True/False to run Trident test tasks
+  testMonitoring: ""
+  testLogging: ""
+  testNetwork: ""
+  testOperators: ""
+  testHtpasswd: ""
+  testApptest: ""
+  testOcs: ""
+
+test:
+ 
+  namespace: ""
+  namespace2: ""
+
+  trident:
+    namespace: "{{ trident.namespace }}"
+    label_selectors: "" 
+    pvc_name: ""
+    storage_class: "{{ trident.storageclass.name }}"
+    image: ""
+    imageversion: ""
+    
+  ocs:
+    block_storage_class:
+      - ""
+      - ""
+    object_storage_class:
+      - ""
+      - ""
+      
+  monitoring:
+    namespace: ""
+    label_selectors: ""
+
+  logging:
+    namespace: ""
+    name: ""
+
+  operators: 
+    operator_sources: "{{ operator_sources }}"
+
+  htpasswd: 
+    k8s_user: "{{ htpasswd.username }}"
+    k8s_password: "{{ htpasswd.password }}"
+
+
+  network:
+    node_name: ""   #choose a worker node
+    pod_name: ""
+    image1: ""
+    image1version: ""
+    image2: ""
+    image2version: ""
+    network_pod1_name: ""
+    network_pod2_name: ""
+    clusterip_service_name: ""
+    nodeport_service_name: ""
+    nodePort: ""
+    lb_service_name: ""
+
+  app:
+    pod_name: ""
+    configmap_name: ""
+    service_name: ""
+    image: ""
+    build_number: ""

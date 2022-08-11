@@ -1,0 +1,311 @@
+---
+
+- name: NETWORK | Add a simple pod 
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: "{{ test.network.pod_name }}"
+        namespace: "{{ test.namespace }}"
+        labels:
+          app: "{{ test.network.pod_name }}"
+      spec:
+        containers:
+          - name: "{{ test.network.pod_name }}"
+            image: "{{ test.network.image1 }}:{{ test.network.image1version }}"
+
+
+
+- name:  NETWORK | Wait and gather information about new pod
+  k8s_info:
+    name: "{{ test.network.pod_name }}"
+    kind: Pod
+    namespace: "{{ test.namespace }}"
+  register: pod_status
+  until: pod_status.resources[0].status.phase == "Running"
+  retries: 10
+  delay: 1
+
+
+- set_fact:
+    podIP_1: "{{ pod_status.resources[0].status.podIP }}" 
+
+
+- name:  NETWORK | Add a LB service  
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ test.network.lb_service_name }}"
+        namespace: "{{ test.namespace }}"
+      spec:
+        loadBalancerIP:
+        type: LoadBalancer
+        selector:
+          app: "{{ test.network.pod_name }}"
+        
+        ports:
+          - port: 8080
+            name: db
+            protocol: TCP
+
+
+
+- name: NETWORK | Add a NodePort service  
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ test.network.nodeport_service_name }}"
+        namespace: "{{ test.namespace }}"
+      spec:
+        type: NodePort
+        selector:
+          app: "{{ test.network.pod_name }}"
+        ports:
+          - port: 8080
+            targetPort: 8080
+            nodePort: 30067
+            protocol: TCP
+
+
+ 
+
+- name:  NETWORK | Add a ClusterIP service  
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ test.network.clusterip_service_name }}"
+        namespace: "{{ test.namespace }}"
+      spec:
+        selector:
+          app: "{{ test.network.pod_name }}"
+        ports:
+          - port: 8080
+            targetPort: 8080
+            protocol: TCP
+
+
+- name: NETWORK | Add a route for  ClusterIP service
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Route
+      metadata:
+        name: clusterip
+        namespace: "{{ test.namespace }}"
+      spec:
+        host: "clusterip-testing.apps.{{ config.cluster_name }}.{{ config.base_domain }}"
+        to:
+          kind: Service
+          name: "{{ test.network.clusterip_service_name }}"
+          weight: 100
+        port:
+          targetPort: 8080
+        wildcardPolicy: None
+
+
+- name:  NETWORK | Test access to ClusterIP Route
+  uri:
+    url: "http://clusterip-testing.apps.{{ config.cluster_name }}.{{ config.base_domain }}"
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 1
+
+
+- name: NETWORK | Wait and gather information about node
+  k8s_info:
+    name: "{{ test.network.node_name }}"
+    kind: Node
+
+  register: node_info 
+
+
+- set_fact:
+    nodeIP: "{{ node_info.resources[0].status.addresses[0].address }}" 
+
+- debug: 
+     var: nodeIP
+
+
+
+- name:  NETWORK | Test access to NodePort Service 
+  uri:
+    url: http://{{ nodeIP }}:30067
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 1
+
+
+
+- name: NETWORK | Add a route for  LB  service
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Route
+      metadata:
+        name: lb
+        namespace: "{{ test.namespace }}"
+      spec:
+        host: "lb-testing.apps.{{ config.cluster_name }}.{{ config.base_domain }}"
+        to:
+          kind: Service
+          name: "{{ test.network.lb_service_name }}"
+          weight: 100
+        port:
+          targetPort: 8080
+        wildcardPolicy: None
+
+
+
+- name:  NETWORK |Test access to LoadBalancer Route
+  uri:
+    url: "http://lb-testing.apps.{{ config.cluster_name }}.{{ config.base_domain }}"
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 1
+
+
+
+
+- name:  NETWORK | Add  a pod in same namespace  
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: "{{ test.network.network_pod1_name }}"
+        namespace: "{{ test.namespace }}"
+        labels:
+          app: "{{ test.network.network_pod1_name }}"
+      spec:
+        containers:
+          - name: "{{ test.network.network_pod1_name }}"
+            image: "{{ test.network.image2 }}:{{ test.network.image2version }}"
+
+
+- name: NETWORK | Wait and gather information about new pod
+  k8s_info:
+    name: "{{ test.network.network_pod1_name }}"
+    kind: Pod
+    namespace: "{{ test.namespace }}"
+  register: pod_status
+  until: pod_status.resources[0].status.phase == "Running"
+  retries: 10
+  delay: 1
+
+- name: go to namespace  "{{ test.namespace }}"
+  command: oc project "{{ test.namespace }}"
+
+
+
+
+- name:  NETWORK | Ping pod in same namespace 
+  shell: |
+     oc rsh {{ test.network.network_pod1_name }} ping -c 4 {{ podIP_1 }} 
+  
+  register: output
+- debug: var=output.stdout_lines
+
+
+- name:  Check ping command 
+  assert:
+    that:
+     - output is successful
+
+
+
+
+- name: NETWORK |  Create  namespace {{ test.namespace2 }}
+  k8s:
+    kind: Namespace
+    api_version: v1
+    name: "{{ test.namespace2 }}"
+    state: present
+
+
+
+- name: NETWORK | Add a pod in different namespace  
+  k8s:
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: "{{ test.network.network_pod2_name }}"
+        namespace: "{{ test.namespace2 }}"
+        labels:
+          app: "{{ test.network.network_pod2_name }}"
+      spec:
+        containers:
+          - name: "{{ test.network.network_pod2_name }}"
+            image: "{{ test.network.image2 }}:{{ test.network.image2version }}"
+
+
+- name:  NETWORK | Wait and gather information about new pod
+  k8s_info:
+    name: "{{ test.network.network_pod2_name }}"
+    kind: Pod
+    namespace: "{{ test.namespace2 }}"
+  register: result
+  until: result.resources[0].status.phase == "Running"
+  retries: 10
+  delay: 5
+
+
+- set_fact:
+    podIP_2: "{{ result.resources[0].status.podIP }}"
+
+
+- name: NETWORK |  Ping pod in other namespace 
+  shell: |
+     oc rsh {{ test.network.network_pod1_name }} ping -c 4 {{ podIP_2 }} 
+  
+  register: output
+- debug: var=output.stdout_lines
+
+
+- name:  NETWORK | Check ping command 
+  assert:
+    that:
+     - output is successful
+
+
+
+- name: NETWORK | Get OVS pod information
+  k8s_info:
+    kind: DaemonSet
+    name: ovs
+    namespace: openshift-sdn
+  register: deploy
+
+
+- name:   NETWORK | Check that OVS pods are as desired
+  assert:
+    that:
+ 
+     - deploy.resources[0].status.desiredNumberScheduled == deploy.resources[0].status.currentNumberScheduled
+
+- name:  Get SDN pod information
+  k8s_info:
+    kind: DaemonSet
+    name: sdn
+    namespace: openshift-sdn
+  register: deploy
+
+
+- name:  NETWORK | Check SDN pods are as desired
+  assert:
+    that:
+ 
+     - deploy.resources[0].status.desiredNumberScheduled == deploy.resources[0].status.currentNumberScheduled
